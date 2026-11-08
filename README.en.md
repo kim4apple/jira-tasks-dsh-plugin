@@ -6,6 +6,13 @@
 
 JIRA inside DeepSeek Harness: the **open / reopened** issues assigned to you show up **below the composer input**, and the **left sidebar** gains a **JIRA statistics** entry for project progress, version progress, and each version's issue list. Read-only — it never modifies JIRA.
 
+> **This is a fork of [kim4apple/jira-tasks-dsh-plugin](https://github.com/kim4apple/jira-tasks-dsh-plugin)** (upstream: [liu3734/jira-tasks-dsh-plugin](https://github.com/liu3734/jira-tasks-dsh-plugin)).
+> Changes relative to upstream v1.4.0: the settings card gains **"User name / e-mail"** and **"Password"**
+> fields; an account + password is sent as the standard `Authorization: Basic base64(user:password)`
+> (officially supported on Jira Server / Data Center), while a token still uses `Bearer`. A 401 now
+> reports a different, actionable hint depending on Jira Cloud vs. Server/DC.
+> See ["JIRA base URL and credentials"](#jira-base-url-and-credentials).
+
 <img width="1898" alt="JIRA tasks panel below the composer input" src="https://github.com/user-attachments/assets/d14d0bd4-4f9f-4aa8-9af8-b8a02a2b7296" />
 
 ---

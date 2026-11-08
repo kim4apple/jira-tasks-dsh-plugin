@@ -6,6 +6,12 @@
 
 把 JIRA 搬进 DeepSeek Harness：**输入框下方**直接显示当前项目里指派给你的「开启 / 重新开启」任务，**左侧栏**多一个「JIRA 统计」入口，看项目进度、版本进度和版本内的任务清单。只读，不改 JIRA。
 
+> **这是 [kim4apple/jira-tasks-dsh-plugin](https://github.com/kim4apple/jira-tasks-dsh-plugin) 的 fork**（上游：[liu3734/jira-tasks-dsh-plugin](https://github.com/liu3734/jira-tasks-dsh-plugin)）。
+> 相对上游 v1.4.0 的变更：**设置卡片新增「用户名 / 邮箱」与「密码」两栏**，账号密码走标准
+> `Authorization: Basic base64(用户名:密码)`（Jira Server / Data Center 官方支持），
+> 令牌仍走 `Bearer`；401 时按 Jira Cloud / Server-DC 给出不同的可操作提示。
+> 详见「[JIRA 地址与认证方式](#jira-地址与认证方式)」。
+
 <img width="1898" alt="输入框下方的 JIRA 任务面板" src="https://github.com/user-attachments/assets/d14d0bd4-4f9f-4aa8-9af8-b8a02a2b7296" />
 
 ---
