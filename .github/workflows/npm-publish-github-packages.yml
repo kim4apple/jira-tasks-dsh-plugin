@@ -1,8 +1,14 @@
 # Publish dsh-jira-tasks to the public npm registry and to GitHub Packages
 # when a release is created (or manually dispatched).
 # The package IS the repository root (package.json + cordis.patch.yml + lib/),
-# so that `dsh plugin add github:liu3734/jira-tasks-dsh-plugin` installs it.
+# so that `dsh plugin add github:<owner>/jira-tasks-dsh-plugin` installs it.
 # Requires the repository secret NPM_TOKEN (an npmjs.org access token).
+#
+# Fork note: the GitHub Packages step renames the package to
+# @<owner>/dsh-jira-tasks using the repository owner, so a fork publishes into
+# its own namespace instead of the upstream author's. The npmjs.org step still
+# targets the unscoped `dsh-jira-tasks` name and therefore only succeeds for the
+# account that owns that npm package.
 
 name: Publish npm package
 
@@ -61,8 +67,9 @@ jobs:
       - name: Publish to GitHub Packages
         run: |
           # GitHub npm 仓库只接受 @owner/name 作用域包名（无作用域会 404），
-          # 这里仅为此仓库改名，不影响 npmjs.org 上的 dsh-jira-tasks
-          npm pkg set name=@liu3734/dsh-jira-tasks
+          # 这里按仓库 owner 改名（fork 时即 fork 自己的命名空间），不影响
+          # npmjs.org 上的 dsh-jira-tasks
+          npm pkg set name="@${{ github.repository_owner }}/dsh-jira-tasks"
           npm config set //npm.pkg.github.com/:_authToken "${GITHUB_TOKEN}"
           npm publish --registry https://npm.pkg.github.com
         env:
