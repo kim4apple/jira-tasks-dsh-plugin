@@ -13,6 +13,10 @@ return {
     // 令牌引用优先级：插件自有引用（设置页写入，可覆盖环境变量）先行，
     // 其后才是环境变量回退。
     const TOKEN_REFS = ['JIRA_TASKS_TOKEN', 'JIRA_API_TOKEN', 'JIRA_TOKEN'];
+    // 账号密码引用：账号不是机密，密码是；两者都只走凭据存储 / 环境变量——
+    // 动态插件形态没有自己的 Config 条目可写。
+    const USERNAME_REFS = ['JIRA_TASKS_USERNAME', 'JIRA_USERNAME'];
+    const PASSWORD_REFS = ['JIRA_TASKS_PASSWORD', 'JIRA_PASSWORD'];
 
     async function resolveFirst(names) {
       for (const name of names) {
@@ -21,12 +25,28 @@ return {
           if (cred && typeof cred.value === 'string' && cred.value.length > 0) return cred.value;
         } catch (e) { /* 继续尝试下一个 */ }
       }
+      // 兜底：凭据服务通常已经能把“由启动环境提供”的引用解析出来，这里补一次
+      // 直读，覆盖“只有环境变量、没写进凭据存储”的部署。
+      for (const name of names) {
+        const value = typeof process !== 'undefined' ? process.env[name] : undefined;
+        if (typeof value === 'string' && value.length > 0) return value;
+      }
       return undefined;
     }
 
-    function buildAuthHeader(token) {
-      if (token.indexOf(':') !== -1) return 'Basic ' + btoa(token);
-      return 'Bearer ' + token;
+    // UTF-8 base64。不能用 btoa：它对非 Latin-1 字符（中文密码等）会抛异常。
+    function toBase64(text) {
+      return Buffer.from(text, 'utf-8').toString('base64');
+    }
+
+    // 认证方式：显式账号密码 > 含冒号的旧值 > 纯令牌。
+    // “含冒号的旧值”是为向后兼容保留的：老用户可能把 user:pass 粘在令牌框里。
+    function buildAuthHeader(token, account) {
+      const username = account && typeof account.username === 'string' ? account.username : '';
+      const password = account && typeof account.password === 'string' ? account.password : '';
+      if (username && password) return 'Basic ' + toBase64(username + ':' + password);
+      if (token && token.indexOf(':') !== -1) return 'Basic ' + toBase64(token);
+      return 'Bearer ' + (token || '');
     }
 
     // 默认查询：当前用户、状态“开启/重新开启”的任务（{projectKey}/{key} 占位符可替换）
@@ -38,8 +58,8 @@ return {
 
     // 直接通过 subprocess 服务起 curl：显式 argv 无需 shell 引号转义，
     // 认证头经 stdin(--config -) 传入，避免 token 出现在命令行参数中。
-    async function queryJira(baseUrl, token, jql) {
-      const auth = buildAuthHeader(token);
+    async function queryJira(baseUrl, cred, jql) {
+      const auth = buildAuthHeader(cred.token, cred);
       const cleanBase = baseUrl.replace(/\/+$/, '');
       let curl;
       try {
@@ -82,10 +102,15 @@ return {
         const baseUrl = await resolveFirst(['JIRA_BASE_URL', 'JIRA_URL']);
         if (!baseUrl) return { ok: false, error: '未配置环境变量 JIRA_BASE_URL（或 JIRA_URL）' };
         const token = await resolveFirst(TOKEN_REFS);
-        if (!token) return { ok: false, error: '未配置 JIRA 令牌（JIRA_TASKS_TOKEN，或环境变量 JIRA_API_TOKEN / JIRA_TOKEN）' };
+        const username = await resolveFirst(USERNAME_REFS);
+        const password = await resolveFirst(PASSWORD_REFS);
+        const cred = { token, username: username || '', password: password || '' };
+        if (!cred.token && !(cred.username && cred.password)) {
+          return { ok: false, error: '未配置 JIRA 凭据（JIRA_TASKS_TOKEN / JIRA_API_TOKEN / JIRA_TOKEN，或 JIRA_USERNAME + JIRA_PASSWORD）' };
+        }
 
         const jql = buildJql(args && args.jql ? String(args.jql) : '', projectKey);
-        const raw = await queryJira(baseUrl, token, jql);
+        const raw = await queryJira(baseUrl, cred, jql);
         const stdout = raw.stdout;
         const stderr = raw.stderr;
 
