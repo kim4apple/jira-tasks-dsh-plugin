@@ -6,6 +6,13 @@
 
 JIRA inside DeepSeek Harness: the **open / reopened** issues assigned to you show up **below the composer input**, and the **left sidebar** gains a **JIRA statistics** entry for project progress, version progress, and each version's issue list. Read-only — it never modifies JIRA.
 
+> **This is a fork of [kim4apple/jira-tasks-dsh-plugin](https://github.com/kim4apple/jira-tasks-dsh-plugin)** (upstream: [liu3734/jira-tasks-dsh-plugin](https://github.com/liu3734/jira-tasks-dsh-plugin)).
+> Changes relative to upstream v1.4.0: the settings card gains **"User name / e-mail"** and **"Password"**
+> fields; an account + password is sent as the standard `Authorization: Basic base64(user:password)`
+> (officially supported on Jira Server / Data Center), while a token still uses `Bearer`. A 401 now
+> reports a different, actionable hint depending on Jira Cloud vs. Server/DC.
+> See ["JIRA base URL and credentials"](#jira-base-url-and-credentials).
+
 <img width="1898" alt="JIRA tasks panel below the composer input" src="https://github.com/user-attachments/assets/d14d0bd4-4f9f-4aa8-9af8-b8a02a2b7296" />
 
 ---
@@ -20,9 +27,11 @@ JIRA inside DeepSeek Harness: the **open / reopened** issues assigned to you sho
 
    **Restart DSH** afterwards.
 
-2. **Set the JIRA base URL and token**: Settings → **JIRA 配置** → fill in both → a **green** light means it works.
+2. **Set the JIRA base URL and credentials**: Settings → **JIRA 配置** → fill in the address, then pick one auth method: **user name + password** (common on Server/DC) or **access token / PAT** → a **green** light means it works.
 
    <img width="1590" alt="Settings → JIRA 配置: address, token and connection light" src="https://github.com/user-attachments/assets/af5f11c6-aa9a-4c3b-84ca-cff6c0017b22" />
+
+   > The card now has four fields: **JIRA base URL**, **user name / e-mail**, **password** and **access token / PAT (Bearer)**. The screenshot above predates account + password.
 
 3. **Set the project key**: click **⚙** on the right of the panel header, enter the project key (e.g. `HCPFYH1`), save — it queries immediately.
 
@@ -77,24 +86,49 @@ Click any version name to open it.
 
 Everything lives in **Settings → JIRA 配置** (left navigation, below Agent presets). The same card in the Plugins panel is the same form — either entry point works.
 
-### JIRA base URL and token
+### JIRA base URL and credentials
+
+The settings card has four fields: **JIRA base URL**, **user name / e-mail**, **password** and **access token / PAT (Bearer)**.
 
 | Field | What to enter | Where it is stored |
 |---|---|---|
 | JIRA base URL | e.g. `http://jira.example.com/` | Plugin config, readable back in the form |
-| Access token / PAT | Your JIRA personal access token | Credential store; the UI only shows "configured" |
+| User name / e-mail | Login user name on Jira Server/DC; the account e-mail on Jira Cloud | Plugin config, readable back in the form |
+| Password | That account's password | Credential store; the UI only shows "saved — leave blank to keep it unchanged" |
+| Access token / PAT (Bearer) | Your JIRA personal access token | Credential store; the UI only shows "configured" |
 
-- Auth is auto-detected: a token containing `:` uses Basic, otherwise Bearer
-- Saving with the token left blank keeps the current value; click **Clear settings token** to fall back to the environment variable
+**The auth scheme follows what you filled in:**
+
+| What you filled in | Auth header actually used |
+|---|---|
+| User name + password (both fields) | `Authorization: Basic base64(user:password)` |
+| Access token only | `Authorization: Bearer <token>` |
+| Both | **Account + password wins** |
+
+The card always shows this rule:
+
+> Fill in both "user name" and "password" for account login (Basic is used automatically); a token alone is used as PAT/Bearer. Legacy values containing ":" are still treated as Basic. Jira Cloud only accepts "e-mail + API token" and refuses a real password.
+
+- Backward compatible: an old single value like `user:token` (the token contains `:`) is still treated as Basic.
+- The password is written **only** to the credential store (`~/.dsh/.credentials.yaml`). It is **never sent back to the frontend** and **never written into the configuration document**; the UI only shows "saved — leave blank to keep it unchanged".
+- Saving with the token / password left blank keeps the current value; **Clear settings saved values (fall back to the environment)** drops the saved token, password and user name in one go.
 - Saving with the address left blank removes the setting and falls back to `JIRA_BASE_URL` from the environment / credential file
+
+> **Which deployment you run decides whether a password works**
+>
+> - **Jira Server / Data Center**: account + password works (Atlassian officially supports Basic auth). **Prefer a PAT** (Bearer) anyway — it is easier to revoke.
+> - **Jira Cloud**: Atlassian **deprecated password authentication**; it only accepts "e-mail + API token" (Basic) or OAuth 2.0 (3LO). Entering a real password there returns **401**.
+> - **Server/DC with 2FA / SSO**: password-based Basic auth does not work — use a PAT.
 
 **Connection light** (at the bottom of the card):
 
 | Light | Meaning |
 |---|---|
-| 🟢 Green | Address and token work; the current user is shown |
+| 🟢 Green | Address and credentials work; the current user is shown |
 | 🔴 Red | Unusable; JIRA's reason is shown (e.g. 401) |
-| ⚪ Grey | Address or token not configured |
+| ⚪ Grey | Address or credentials not configured |
+
+Under the light there is also a **current auth scheme** line: `Basic (user alice)`, `Bearer (access token / PAT)`, or `unknown` before the first test; it shows the scheme that is actually in effect even when the test fails.
 
 Opening the card auto-probes once, and saving re-probes. Click **Test connection** to verify **unsaved input** immediately.
 
@@ -117,15 +151,19 @@ Instead of the settings card, you can use the launching environment or `~/.dsh/.
 
 ```yaml
 JIRA_BASE_URL: "http://jira.example.com/"
+JIRA_USERNAME: "<account (Server/DC user name, Cloud e-mail)>"
+JIRA_PASSWORD: "<account password>"
 JIRA_API_TOKEN: "<PAT or user:token>"
 ```
 
 Precedence:
 
 - Base URL: settings card > `JIRA_BASE_URL` > `JIRA_URL`
+- User name: settings card > `JIRA_TASKS_USERNAME` > `JIRA_USERNAME`
+- Password: settings card (`JIRA_TASKS_PASSWORD`) > `JIRA_PASSWORD`
 - Token: settings card > `JIRA_API_TOKEN` > `JIRA_TOKEN`
 
-**The settings card wins over the environment**, so it can override an already-exported `JIRA_API_TOKEN`.
+**The settings card wins over the environment**, so it can override an already-exported `JIRA_API_TOKEN` / `JIRA_USERNAME` / `JIRA_PASSWORD`.
 
 ---
 
@@ -143,7 +181,7 @@ The Desktop app uses its own `desktop` profile and only accepts the Desktop-prov
 
 4. Reopen the Desktop app
 
-> The Desktop app and the browser **do not share configuration**: project key / JQL are stored per page origin, so configure each surface once. The JIRA base URL and token come from the same settings, so they need no duplication.
+> The Desktop app and the browser **do not share configuration**: project key / JQL are stored per page origin, so configure each surface once. The JIRA base URL and credentials (account + password or token) come from the same settings, so they need no duplication.
 
 ---
 
@@ -180,8 +218,8 @@ dsh plugin --profile desktop remove dsh-jira-tasks
 |---|---|
 | Project key not set | Click ⚙ on the header and enter the project key |
 | JIRA base URL not configured | Fill in the address under Settings → JIRA 配置 |
-| JIRA token not configured | Fill in the token under Settings → JIRA 配置 |
-| 401 … | Invalid token or wrong auth scheme; re-enter the token and verify with **Test connection** |
+| JIRA credentials not configured | Fill in the access token under Settings → JIRA 配置, or fill in user name + password |
+| 401 … | Invalid credentials or wrong auth scheme: Jira Cloud refuses a real password (only "e-mail + API token" or OAuth 2.0), Server/DC prefers a PAT; re-enter and verify with **Test connection** |
 | Cannot parse JIRA response | Network / proxy problem; check whether the machine can reach JIRA |
 </details>
 
@@ -216,7 +254,7 @@ The page was updated but the background process still runs the old plugin. **Ful
 | DSH versions | `0.1.7` – `0.2.x` (excluding `0.3.0` and its prereleases) |
 | Surfaces | Browser (`dsh web`) and the Desktop app, DeepSeek Harness.app (Electron) |
 | Theme | Adapts to light / dark themes |
-| JIRA | Server / Data Center REST API v2, PAT (Bearer) or Basic auth |
+| JIRA | Server / Data Center REST API v2, PAT (Bearer) or account + password (Basic) auth |
 
 ## License
 

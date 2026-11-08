@@ -6,6 +6,12 @@
 
 把 JIRA 搬进 DeepSeek Harness：**输入框下方**直接显示当前项目里指派给你的「开启 / 重新开启」任务，**左侧栏**多一个「JIRA 统计」入口，看项目进度、版本进度和版本内的任务清单。只读，不改 JIRA。
 
+> **这是 [kim4apple/jira-tasks-dsh-plugin](https://github.com/kim4apple/jira-tasks-dsh-plugin) 的 fork**（上游：[liu3734/jira-tasks-dsh-plugin](https://github.com/liu3734/jira-tasks-dsh-plugin)）。
+> 相对上游 v1.4.0 的变更：**设置卡片新增「用户名 / 邮箱」与「密码」两栏**，账号密码走标准
+> `Authorization: Basic base64(用户名:密码)`（Jira Server / Data Center 官方支持），
+> 令牌仍走 `Bearer`；401 时按 Jira Cloud / Server-DC 给出不同的可操作提示。
+> 详见「[JIRA 地址与认证方式](#jira-地址与认证方式)」。
+
 <img width="1898" alt="输入框下方的 JIRA 任务面板" src="https://github.com/user-attachments/assets/d14d0bd4-4f9f-4aa8-9af8-b8a02a2b7296" />
 
 ---
@@ -20,9 +26,11 @@
 
    装完**重启 DSH**。
 
-2. **填 JIRA 地址与令牌**：设置 → **JIRA 配置** → 填写地址和访问令牌 → 看到**绿灯**即连通。
+2. **填 JIRA 地址与凭据**：设置 → **JIRA 配置** → 填写地址，再选一种认证方式：**账号 + 密码**（Server/DC 常用）或**访问令牌 / PAT** → 看到**绿灯**即连通。
 
    <img width="1590" alt="设置 → JIRA 配置：地址、令牌与连接状态灯" src="https://github.com/user-attachments/assets/af5f11c6-aa9a-4c3b-84ca-cff6c0017b22" />
+
+   > 卡片现在有四栏：**JIRA 地址**、**用户名 / 邮箱**、**密码**、**访问令牌 / PAT（Bearer）**。上图是加入账号密码之前的样子。
 
 3. **填项目 Key**：点面板标题右侧 **⚙**，填写项目编号（如 `HCPFYH1`），保存即查询。
 
@@ -77,24 +85,49 @@
 
 全部配置都在 **设置 → JIRA 配置**（左侧导航，在「Agent 预设」下面）里。插件面板里的同一张卡片是同一个表单，两处都行。
 
-### JIRA 地址与令牌
+### JIRA 地址与认证方式
 
-| 项 | 填什么 | 存在哪 |
+设置卡片有四栏：**JIRA 地址**、**用户名 / 邮箱**、**密码**、**访问令牌 / PAT（Bearer）**。
+
+| 栏位 | 填什么 | 存在哪 |
 |---|---|---|
 | JIRA 地址 | 如 `http://jira.example.com/` | 插件配置项，界面可回读 |
-| 访问令牌 / PAT | JIRA 个人访问令牌 | 凭据存储，前端只显示「已配置」 |
+| 用户名 / 邮箱 | Jira Server/DC 的登录用户名；Jira Cloud 填账号邮箱 | 插件配置项，界面可回读 |
+| 密码 | 该账号的密码 | 凭据存储，前端只显示「已保存，留空保持不变」 |
+| 访问令牌 / PAT（Bearer） | JIRA 个人访问令牌 | 凭据存储，前端只显示「已配置」 |
 
-- 认证方式自动识别：令牌含 `:` 用 Basic，否则用 Bearer
-- 留空保存 = 保持原值不变；想退回环境变量，点「清除设置页令牌」
+**认证方式按你填的内容自动决定：**
+
+| 填了什么 | 实际使用的认证头 |
+|---|---|
+| 用户名 + 密码（两栏都填） | `Authorization: Basic base64(用户名:密码)` |
+| 只填访问令牌 | `Authorization: Bearer <令牌>` |
+| 两者都填 | **账号密码优先** |
+
+卡片上有一条始终可见的规则提示：
+
+> 账号密码填「用户名 + 密码」两栏（自动 Basic）；只填令牌则按 PAT/Bearer 使用。含 “:” 的旧值仍按 Basic 处理。Jira Cloud 只接受「邮箱 + API token」，不接受真密码。
+
+- 向后兼容：老配置里「用户名:令牌」这种单值（令牌含 `:`）仍按 Basic 处理。
+- 密码只写进凭据存储（`~/.dsh/.credentials.yaml`），**不会回传前端**，也**不会写进配置文档**；前端只显示「已保存，留空保持不变」。
+- 令牌 / 密码留空保存 = 保持原值不变；点「清除设置页保存值（回退到环境变量）」可一次清掉设置页保存的令牌、密码与用户名，改用环境变量。
 - 地址留空保存 = 清除设置项，回退到环境变量 / 凭据文件里的 `JIRA_BASE_URL`
+
+> **部署形态决定密码能不能用**
+>
+> - **Jira Server / Data Center**：账号密码可用（Atlassian 官方支持 Basic 认证）。仍**推荐改用 PAT**（Bearer），更安全、可随时吊销。
+> - **Jira Cloud**：Atlassian **已废弃密码认证**，只接受「邮箱 + API token」（Basic）或 OAuth 2.0 (3LO)。填真密码会返回 **401**。
+> - **Server/DC 启用了 2FA / SSO**：密码 Basic 认证不可用，必须改用 PAT。
 
 **连接状态灯**（卡片底部）：
 
 | 灯 | 含义 |
 |---|---|
-| 🟢 绿 | 地址与令牌可用，并显示当前登录用户 |
+| 🟢 绿 | 地址与凭据可用，并显示当前登录用户 |
 | 🔴 红 | 不可用，显示 JIRA 返回的原因（如 401） |
-| ⚪ 灰 | 地址或令牌未配置 |
+| ⚪ 灰 | 地址或凭据未配置 |
+
+状态灯下面还有一行 **当前认证方式**：`Basic（账号 alice）`、`Bearer（访问令牌 / PAT）`，还没测过则是 `未知`；测试失败时也会显示实际生效的方式。
 
 打开卡片会自动探测一次，保存后自动重测；点 **测试连接** 可以用**还没保存的输入**立即验证。
 
@@ -113,19 +146,23 @@ project = "{projectKey}" AND status in ("开启", "重新开启") AND assignee =
 
 ### 用环境变量（可选）
 
-不想在界面里填令牌，也可以用启动环境或 `~/.dsh/.credentials.yaml` 里的：
+不想在界面里填凭据，也可以用启动环境或 `~/.dsh/.credentials.yaml` 里的：
 
 ```yaml
 JIRA_BASE_URL: "http://jira.example.com/"
+JIRA_USERNAME: "<账号（Server/DC 用户名，Cloud 邮箱）>"
+JIRA_PASSWORD: "<账号密码>"
 JIRA_API_TOKEN: "<PAT 或 user:token>"
 ```
 
 优先级：
 
 - 地址：设置页地址 > `JIRA_BASE_URL` > `JIRA_URL`
+- 账号：设置页填写的账号 > `JIRA_TASKS_USERNAME` > `JIRA_USERNAME`
+- 密码：设置页保存的密码（`JIRA_TASKS_PASSWORD`）> `JIRA_PASSWORD`
 - 令牌：设置页令牌 > `JIRA_API_TOKEN` > `JIRA_TOKEN`
 
-**设置页令牌优先于环境变量**，环境里已经导出 `JIRA_API_TOKEN` 也能在界面覆盖它。
+**设置页保存的值优先于环境变量**，环境里已经导出 `JIRA_API_TOKEN` / `JIRA_USERNAME` / `JIRA_PASSWORD` 也能在界面覆盖它们。
 
 ---
 
@@ -143,7 +180,7 @@ JIRA_API_TOKEN: "<PAT 或 user:token>"
 
 4. 重新打开桌面端
 
-> 桌面端与浏览器**配置不互通**：项目 Key / JQL 按页面来源分开存，两边各配一次即可。JIRA 地址与令牌来自同一份设置，无需重复配置。
+> 桌面端与浏览器**配置不互通**：项目 Key / JQL 按页面来源分开存，两边各配一次即可。JIRA 地址与凭据（账号密码 / 令牌）来自同一份设置，无需重复配置。
 
 ---
 
@@ -180,8 +217,8 @@ dsh plugin --profile desktop remove dsh-jira-tasks
 |---|---|
 | 未设置项目 Key | 点标题右侧 ⚙ 填项目 Key |
 | 未配置 JIRA 地址 | 去「设置 → JIRA 配置」填地址 |
-| 未配置 JIRA 令牌 | 去「设置 → JIRA 配置」填令牌 |
-| 401 … | 令牌无效或认证方式不对，重填令牌并用「测试连接」验证 |
+| 未配置 JIRA 凭据 | 去「设置 → JIRA 配置」填访问令牌，或填用户名 + 密码 |
+| 401 … | 凭据无效或认证方式不对：Jira Cloud 不能用真密码（只接受「邮箱 + API token」或 OAuth 2.0），Server/DC 优先改用 PAT；重填后用「测试连接」验证 |
 | 无法解析 JIRA 响应 | 网络 / 代理问题，检查机器能否访问 JIRA |
 </details>
 
@@ -216,7 +253,7 @@ dsh plugin --profile desktop remove dsh-jira-tasks
 | DSH 版本 | `0.1.7` ~ `0.2.x`（不含 `0.3.0` 及其预发布） |
 | 运行形态 | 浏览器（`dsh web`）、桌面端 DeepSeek Harness.app（Electron） |
 | 主题 | 浅色 / 深色自适应 |
-| JIRA | Server / Data Center REST API v2，PAT（Bearer）或 Basic 认证 |
+| JIRA | Server / Data Center REST API v2，PAT（Bearer）或账号密码（Basic）认证 |
 
 ## License
 
