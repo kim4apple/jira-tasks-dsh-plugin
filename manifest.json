@@ -1,7 +1,7 @@
 {
   "pluginId": "jira-1",
   "name": "JIRA 开启任务面板",
-  "purpose": "按工作区配置项目 Key，在新会话输入框下方展示指派给当前用户的“开启/重新开启”任务；左侧栏新增「JIRA 统计」入口：点开后在中央面板按本浏览器已配置 / 最近查看的项目 Key 切换，或手动输入编号，查看该项目的概览（任务总数 / 完成率）与版本统计列表（按发布日期倒序，每页最近 10 个版本、可翻页；含发布状态、发布日期、各状态任务数、完成率）；点版本名进入该版本的 JIRA 任务列表，可点表头按多字段排序，默认本人任务排在最前。JIRA 地址与令牌在 设置 → JIRA 配置（左侧导航，settings.section）中配置，插件面板（plugins.item）保留同一张卡片（环境变量 / .credentials.yaml 作为回退）；未配置的工作区显示未配置状态。适配 DSH 0.1.7 与 0.2.0（0.1.7-rc.2 / 0.2.0-rc.2 实测），桌面端 0.2.1-rc.5（sidebar.panellist / main 槽位与 /jira/api/* 路由已按运行实例核对），web profile 与桌面端通用。",
+  "purpose": "按工作区配置项目 Key，在新会话输入框下方展示指派给当前用户的“开启/重新开启”任务；左侧栏新增「JIRA 统计」入口：点开后在中央面板按本浏览器已配置 / 最近查看的项目 Key 切换，或手动输入编号，查看该项目的概览（任务总数 / 完成率）与版本统计列表（按发布日期倒序，每页最近 10 个版本、可翻页；含发布状态、发布日期、各状态任务数、完成率）；点版本名进入该版本的 JIRA 任务列表，可点表头按多字段排序，默认本人任务排在最前。JIRA 地址、账号密码与令牌在 设置 → JIRA 配置（左侧导航，settings.section）中配置，插件面板（plugins.item）保留同一张卡片（环境变量 / .credentials.yaml 作为回退）；未配置的工作区显示未配置状态。适配 DSH 0.1.7 与 0.2.0（0.1.7-rc.2 / 0.2.0-rc.2 实测），桌面端 0.2.1-rc.5（sidebar.panellist / main 槽位与 /jira/api/* 路由已按运行实例核对），web profile 与桌面端通用。",
   "type": [
     "dsh-dynamic-cordis-plugin",
     "dsh-profile-bundle"
@@ -21,10 +21,14 @@
   "settingsNamespace": "jira-tasks",
   "envVars": {
     "JIRA_BASE_URL": "JIRA 地址（回退；条目 Config.baseUrl 优先，备选：JIRA_URL）",
-    "JIRA_API_TOKEN": "访问令牌 / PAT（回退；设置页写入的凭据引用 JIRA_TASKS_TOKEN 优先，备选：JIRA_TOKEN）"
+    "JIRA_API_TOKEN": "访问令牌 / PAT（回退；设置页写入的凭据引用 JIRA_TASKS_TOKEN 优先，备选：JIRA_TOKEN）",
+    "JIRA_USERNAME": "JIRA 账号（Server/DC 用用户名，Cloud 用邮箱；回退；设置页写入的 JIRA_TASKS_USERNAME 优先）",
+    "JIRA_PASSWORD": "账号密码（Server/DC 的 Basic 认证用；回退；设置页写入的 JIRA_TASKS_PASSWORD 优先）"
   },
   "credentialRefs": {
-    "JIRA_TASKS_TOKEN": "设置页保存的访问令牌（插件自有引用；优先于环境变量，可在卡片中清除）"
+    "JIRA_TASKS_TOKEN": "设置页保存的访问令牌（插件自有引用；优先于环境变量，可在卡片中清除）",
+    "JIRA_TASKS_USERNAME": "设置页保存的账号（插件自有引用；优先于环境变量）",
+    "JIRA_TASKS_PASSWORD": "设置页保存的密码（插件自有引用；仅用于 Jira Server/DC 的 Basic 认证；优先于环境变量）"
   },
   "credentialFile": "$DSH_HOME/.credentials.yaml",
   "storageKey": "dsh.jiraTasks.config.v1",
