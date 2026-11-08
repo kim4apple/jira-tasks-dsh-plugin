@@ -132,6 +132,39 @@ Under the light there is also a **current auth scheme** line: `Basic (user alice
 
 Opening the card auto-probes once, and saving re-probes. Click **Test connection** to verify **unsaved input** immediately.
 
+### Issue detail, comments, and attachment downloads
+
+Open the **"详情" / "Detail"** action on any issue in the task panel (below the composer) or in the
+version task list to see:
+
+- **All fields** — summary (status / type / priority / assignee / reporter / timestamps), description,
+  labels / components / fix versions, and JIRA's **custom fields** (`customfield_*`)
+- **Comments** — author, timestamp, body
+- **Attachments** — filename, size, type, uploader, timestamp
+
+Attachments can be downloaded directly:
+
+| Action | Result |
+|---|---|
+| **"下载" / "Download"** on an attachment row | saved under `<workspace>/jira-attachments/<ISSUE-KEY>/`; the saved path is shown in the panel |
+| **"下载全部附件" / "Download all"** at the top of the panel | every attachment of the issue, listed with per-file success or failure |
+
+> **Downloading into the workspace is deliberate**: the file lands where your agent can read it —
+> just hand it the path ("look at the logs for PROJ-123"). `.log`, `.log.gz`, `.txt`, and `.har`
+> attachments can be grepped directly.
+
+**Security boundaries** (enforced by the Host, never by the frontend):
+
+- The frontend sends only an **attachment id**; the Host resolves the download URL from JIRA's own
+  response, so the browser cannot point the plugin at an arbitrary URL
+- The attachment URL must be on the **same host and port** as the configured JIRA address
+- A cross-host redirect is fetched **without** the Authorization header, so credentials are never
+  handed to a third party
+- Filenames are sanitized (no directories, no `..`, length-capped) and out-of-bounds paths are refused
+- Per-attachment size limit defaults to **100 MB** (`maxAttachmentMb`)
+
+> Read-only: it never modifies JIRA.
+
 ### Project key and JQL (saved per workspace)
 
 - **Project key**: e.g. `HCPFYH1` — queried immediately after saving, auto-loaded by new sessions in that workspace
