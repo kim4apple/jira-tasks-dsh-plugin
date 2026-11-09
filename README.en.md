@@ -4,7 +4,7 @@
 
 [中文](README.md) · **English**
 
-JIRA inside DeepSeek Harness: the **open / reopened** issues assigned to you show up **below the composer input**, and the **left sidebar** gains a **JIRA statistics** entry for project progress, version progress, and each version's issue list. Read-only — it never modifies JIRA.
+JIRA inside DeepSeek Harness: the **not-done** issues assigned to you show up **below the composer input** (matched by JIRA status category, never by hardcoded status names), and the **left sidebar** gains a **JIRA statistics** entry for project progress, version progress, and each version's issue list. Read-only — it never modifies JIRA.
 
 > **This is a fork of [kim4apple/jira-tasks-dsh-plugin](https://github.com/kim4apple/jira-tasks-dsh-plugin)** (upstream: [liu3734/jira-tasks-dsh-plugin](https://github.com/liu3734/jira-tasks-dsh-plugin)).
 > Changes relative to upstream v1.4.0: the settings card gains **"User name / e-mail"** and **"Password"**
@@ -41,7 +41,7 @@ JIRA inside DeepSeek Harness: the **open / reopened** issues assigned to you sho
 
 | Where | What | What you can do |
 |---|---|---|
-| Below the composer | My tasks panel | See your open / reopened issues, click one to open JIRA |
+| Below the composer | My tasks panel | See your not-done issues, click one to open JIRA |
 | Left sidebar "JIRA 统计" | Project statistics page | Switch projects, see totals and completion, track versions |
 | Version list → version name | Version issue list | See every issue in that version, sort by header, your own first |
 
@@ -170,13 +170,18 @@ Attachments can be downloaded directly:
 - **Project key**: e.g. `HCPFYH1` — queried immediately after saving, auto-loaded by new sessions in that workspace
 - **JQL**: leave empty for the default query, or write your own; `{projectKey}` / `{key}` is replaced with the project key
 
-Default query (Chinese workflow status names):
+Default query (filtered by JIRA **status category**, so it works on any instance):
 
 ```jql
-project = "{projectKey}" AND status in ("开启", "重新开启") AND assignee = currentUser() ORDER BY updated DESC
+project = "{projectKey}" AND assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC
 ```
 
-> Teams using English statuses (Open / Reopened) just set a custom JQL in ⚙.
+> The default query never hardcodes workflow status names — they differ per instance
+> (Chinese, English or custom), and a hardcoded name fails with
+> 「"status"域中没有…值」. "Not done" means "not in the Done category";
+> to see completed issues, change `!= Done` to `= Done`.
+> If you need to filter by concrete status names (Open / Reopened / 开启 / 重新开启 …),
+> set a custom JQL in ⚙.
 
 ### Using environment variables (optional)
 

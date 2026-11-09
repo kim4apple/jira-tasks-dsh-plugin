@@ -4,7 +4,7 @@
 
 **中文** · [English](README.en.md)
 
-把 JIRA 搬进 DeepSeek Harness：**输入框下方**直接显示当前项目里指派给你的「开启 / 重新开启」任务，**左侧栏**多一个「JIRA 统计」入口，看项目进度、版本进度和版本内的任务清单。只读，不改 JIRA。
+把 JIRA 搬进 DeepSeek Harness：**输入框下方**直接显示当前项目里指派给你的**未完成**任务（按状态类别判定，不含已完成），**左侧栏**多一个「JIRA 统计」入口，看项目进度、版本进度和版本内的任务清单。只读，不改 JIRA。
 
 > **这是 [kim4apple/jira-tasks-dsh-plugin](https://github.com/kim4apple/jira-tasks-dsh-plugin) 的 fork**（上游：[liu3734/jira-tasks-dsh-plugin](https://github.com/liu3734/jira-tasks-dsh-plugin)）。
 > 相对上游 v1.4.0 的变更：**设置卡片新增「用户名 / 邮箱」与「密码」两栏**，账号密码走标准
@@ -40,7 +40,7 @@
 
 | 位置 | 是什么 | 能做什么 |
 |---|---|---|
-| 输入框下方 | 我的任务面板 | 看本人在「开启 / 重新开启」里的任务，点开进 JIRA |
+| 输入框下方 | 我的任务面板 | 看本人未完成的任务，点开进 JIRA |
 | 左侧栏「JIRA 统计」 | 项目统计页 | 切项目、看总量与完成率、按版本看进度 |
 | 版本列表 → 版本名 | 版本任务列表 | 看该版本的所有任务，点表头排序，本人排最前 |
 
@@ -165,13 +165,16 @@
 - **项目 Key**：如 `HCPFYH1`，保存后立即查询，该工作区的新会话自动加载
 - **JQL**：留空走默认查询，也可自定义，`{projectKey}` / `{key}` 会被替换成项目 Key
 
-默认查询（中文工作流状态名）：
+默认查询（按 JIRA 状态类别过滤，任何实例都能用）：
 
 ```jql
-project = "{projectKey}" AND status in ("开启", "重新开启") AND assignee = currentUser() ORDER BY updated DESC
+project = "{projectKey}" AND assignee = currentUser() AND statusCategory != Done ORDER BY updated DESC
 ```
 
-> 用英文状态（Open / Reopened）的团队，在 ⚙ 里填一段自定义 JQL 即可。
+> 默认查询不硬编码工作流状态名 —— 各实例的状态名不固定（中文/英文/自定义都有），
+> 硬编码会在不匹配的实例上直接报「"status"域中没有…值」。
+> 「未完成」= 不在 Done 类别；想看已完成的，把 `!= Done` 改成 `= Done`。
+> 需要按具体状态名过滤时（Open / Reopened / 开启 / 重新开启 …），在 ⚙ 里填自定义 JQL。
 
 ### 用环境变量（可选）
 
