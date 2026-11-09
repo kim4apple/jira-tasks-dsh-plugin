@@ -1,6 +1,6 @@
 {
   "name": "dsh-jira-tasks",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "JIRA open tasks panel plus a sidebar task-statistics page for DeepSeek Harness (DSH) 0.1.7-0.2.x, web and Desktop: shows the current user's open/reopened issues below the composer, and a left-sidebar entry that opens per-project statistics (summary, a version-statistics list paged 10 versions at a time, and a clickable version task list with sortable columns and your own issues first) with project switching, per-workspace project key, persistent profile bundle.",
   "type": "module",
   "main": "lib/index.js",
