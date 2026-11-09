@@ -60,5 +60,8 @@
         "@deepseek-ai/dsh-client-ui-sidebar"
       ]
     }
+  },
+  "scripts": {
+    "test": "node harness/run-all.mjs"
   }
 }
